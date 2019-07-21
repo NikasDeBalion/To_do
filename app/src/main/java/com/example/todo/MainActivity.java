@@ -4,13 +4,17 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.animation.AnimationUtils;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -23,16 +27,48 @@ public class MainActivity extends AppCompatActivity {
     DataBase dbHelper;
     private ListView all_tasks;
     private ArrayAdapter<String> my_adapter;
+    private EditText field_text;
+    private SharedPreferences prefs;
+    private String name_list;
+    private TextView info_app;
+    private String text_for_delete;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        info_app = (TextView)findViewById(R.id.info_app);
+        info_app.startAnimation(AnimationUtils.loadAnimation(this, R.anim.fade_text));
+
         dbHelper = new DataBase(this);
         all_tasks = (ListView)findViewById(R.id.tasks_list);
+        field_text = (EditText)findViewById(R.id.list_name);
 
+        prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        name_list = prefs.getString("list_name", "");
+        field_text.setText(name_list);
+
+
+        changeTextAction();
         loadAllTasks();
+    }
+
+    private void changeTextAction() {
+        field_text.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) { }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                SharedPreferences.Editor editPrefs = prefs.edit();
+                editPrefs.putString("list_name", String.valueOf(field_text.getText()));
+                editPrefs.apply();
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {            }
+        });
     }
 
     private void loadAllTasks() {
@@ -84,8 +120,14 @@ public class MainActivity extends AppCompatActivity {
     public void deleteTask(View view) {
         View parent = (View)view.getParent();
         TextView txt_task = (TextView)findViewById(R.id.txt_task);
-        String task = String.valueOf(txt_task.getText());
-        dbHelper.deleteData(task);
-        loadAllTasks();
+        text_for_delete = String.valueOf(txt_task.getText());
+
+        parent.animate().alpha(0).setDuration(500).withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                dbHelper.deleteData(text_for_delete);
+                loadAllTasks();
+            }
+        });
     }
 }
